@@ -1,0 +1,7 @@
+{
+  "name": "Cerveza Xàbia - Blind Beer Tasting",
+  "description": "Die ultimative Blindverkostungs-App für die Jungs in Xàbia, Spanien. Geführtes Verkosten, Trink-Speedrun, Tipp-Genauigkeit, Party-Minispiele, Ranglisten und PDF-Export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
