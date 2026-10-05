@@ -28,6 +28,7 @@ import { TournamentSession, Beer, Player, TastingRound, PlayerRoundRating, BeerS
 import { soundController } from '../utils/audio';
 import { DEFAULT_SPANISH_BEERS } from '../data/spanishBeers';
 import { ElHidratadorModal } from './ElHidratadorModal';
+import { BeerBottleVisual } from './BeerBottleVisual';
 
 interface PcGuidedTastingViewProps {
   session: TournamentSession;
@@ -558,15 +559,18 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
                 {session.beers.map((beer, idx) => (
                   <div
                     key={beer.id}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-stone-800/80 border border-stone-700/60"
+                    className="flex items-center justify-between p-2.5 rounded-2xl bg-stone-800/80 border border-stone-700/60 hover:border-amber-500/40 transition"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-stone-700 text-amber-400 font-bold text-xs flex items-center justify-center">
-                        #{idx + 1}
-                      </span>
+                      <div className="w-10 h-14 flex items-center justify-center bg-stone-900/60 rounded-xl overflow-hidden shrink-0 border border-stone-700/40">
+                        <BeerBottleVisual beer={beer} size="sm" showLabel={false} />
+                      </div>
                       <div>
-                        <div className="font-bold text-stone-100 text-sm">{beer.name}</div>
-                        <div className="text-xs text-stone-400 flex items-center gap-2">
+                        <div className="font-bold text-stone-100 text-sm flex items-center gap-2">
+                          <span>{beer.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-700 text-amber-400 font-mono">#{idx + 1}</span>
+                        </div>
+                        <div className="text-xs text-stone-400 flex items-center gap-2 mt-0.5">
                           <span>{beer.brewery}</span>
                           <span>•</span>
                           <span className="text-amber-400/90">{beer.style}</span>
@@ -575,7 +579,7 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
                         </div>
                       </div>
                     </div>
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-stone-700/60 text-stone-300 font-medium">
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-stone-700/60 text-amber-300 font-semibold shrink-0">
                       {beer.priceEur ? `${beer.priceEur.toFixed(2)} €` : 'Spanien'}
                     </span>
                   </div>
@@ -673,15 +677,29 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
                 <span>Zapfmeister-Sicht geöffnet</span>
               </div>
 
-              <div>
-                <span className="text-xs uppercase font-extrabold text-amber-400 tracking-wider">
-                  Schenke jetzt heimlich ein:
-                </span>
-                <h1 className="text-4xl sm:text-5xl font-black text-white mt-1 text-amber-300">
-                  {currentSecretBeer?.name}
-                </h1>
-                <div className="text-lg text-stone-300 font-semibold mt-1">
-                  {currentSecretBeer?.brewery} • {currentSecretBeer?.origin}
+              {/* Bottle & Name Showcase */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 bg-stone-900/60 border border-amber-500/30 rounded-3xl p-6">
+                {currentSecretBeer && (
+                  <div className="shrink-0 bg-stone-950/70 p-3 rounded-2xl border border-stone-800 shadow-inner">
+                    <BeerBottleVisual beer={currentSecretBeer} size="md" />
+                  </div>
+                )}
+
+                <div className="text-center sm:text-left">
+                  <span className="text-xs uppercase font-extrabold text-amber-400 tracking-wider">
+                    Schenke jetzt heimlich ein:
+                  </span>
+                  <h1 className="text-3xl sm:text-4xl font-black text-white mt-1 text-amber-300">
+                    {currentSecretBeer?.name}
+                  </h1>
+                  <div className="text-base text-stone-300 font-semibold mt-1">
+                    {currentSecretBeer?.brewery} • {currentSecretBeer?.origin}
+                  </div>
+                  {currentSecretBeer?.servingTemp && (
+                    <div className="text-xs text-amber-400/90 font-medium mt-1">
+                      ❄️ Ideale Temperatur: <strong>{currentSecretBeer.servingTemp}</strong>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -701,7 +719,7 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
                 </div>
                 {currentSecretBeer?.description && (
                   <div className="sm:col-span-3 text-xs text-stone-300 border-t border-stone-800 pt-3">
-                    <strong>Optischer Hinweis:</strong> {currentSecretBeer.description}
+                    <strong>Erkennungs-Tipp:</strong> {currentSecretBeer.description}
                   </div>
                 )}
               </div>
@@ -957,38 +975,69 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
 
     return (
       <div className="w-full max-w-5xl mx-auto space-y-6 animate-fade-in text-stone-100">
-        {/* Banner with true identity */}
-        <div className="bg-gradient-to-r from-amber-950/90 via-stone-900 to-amber-900/80 border-2 border-amber-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl text-center relative overflow-hidden">
-          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-extrabold text-xs uppercase tracking-wider mb-2 border border-emerald-500/40">
-            🎉 Runde {currentRoundIdx + 1} Aufgelöst!
-          </div>
+        {/* Banner with true identity & Visual Bottle */}
+        <div className="bg-gradient-to-r from-amber-950/90 via-stone-900 to-amber-900/80 border-2 border-amber-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+            {/* Visual Bottle */}
+            {currentSecretBeer && (
+              <div className="shrink-0 bg-stone-950/80 p-5 rounded-3xl border border-stone-800 shadow-2xl flex items-center justify-center">
+                <BeerBottleVisual beer={currentSecretBeer} size="lg" />
+              </div>
+            )}
 
-          <div className="text-xs uppercase font-extrabold text-amber-400 tracking-wider">
-            In euren Gläsern war:
-          </div>
+            <div className="text-center md:text-left max-w-xl">
+              <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-extrabold text-xs uppercase tracking-wider mb-2 border border-emerald-500/40">
+                🎉 Runde {currentRoundIdx + 1} Aufgelöst!
+              </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black text-white mt-1 text-amber-300 drop-shadow-md">
-            {currentSecretBeer?.name}
-          </h1>
+              <div className="text-xs uppercase font-extrabold text-amber-400 tracking-wider">
+                In euren Gläsern war:
+              </div>
 
-          <div className="text-lg sm:text-xl font-bold text-stone-200 mt-2 flex items-center justify-center gap-3 flex-wrap">
-            <span>{currentSecretBeer?.brewery}</span>
-            <span>•</span>
-            <span className="text-amber-400">{currentSecretBeer?.style}</span>
-            <span>•</span>
-            <span>{currentSecretBeer?.abv}% vol</span>
-            <span>•</span>
-            <span className="text-emerald-400 font-extrabold">ca. {currentSecretBeer?.priceEur?.toFixed(2)} €</span>
-          </div>
+              <h1 className="text-4xl sm:text-5xl font-black text-white mt-1 text-amber-300 drop-shadow-md">
+                {currentSecretBeer?.name}
+              </h1>
 
-          {currentSecretBeer?.trivia && (
-            <div className="mt-4 p-4 rounded-2xl bg-black/40 border border-stone-800 text-stone-300 text-sm max-w-2xl mx-auto italic">
-              „{currentSecretBeer.trivia}“
+              <div className="text-base sm:text-lg font-bold text-stone-200 mt-2 flex items-center justify-center md:justify-start gap-2.5 flex-wrap">
+                <span>{currentSecretBeer?.brewery}</span>
+                <span>•</span>
+                <span className="text-amber-400">{currentSecretBeer?.style}</span>
+                <span>•</span>
+                <span>{currentSecretBeer?.abv}% vol</span>
+                {currentSecretBeer?.ibu && (
+                  <>
+                    <span>•</span>
+                    <span className="text-amber-300 font-mono text-sm">{currentSecretBeer.ibu} IBU</span>
+                  </>
+                )}
+                <span>•</span>
+                <span className="text-emerald-400 font-extrabold">ca. {currentSecretBeer?.priceEur?.toFixed(2)} €</span>
+              </div>
+
+              {/* Food pairings & serving temp */}
+              <div className="mt-3.5 flex flex-wrap items-center justify-center md:justify-start gap-2">
+                {currentSecretBeer?.servingTemp && (
+                  <span className="px-3 py-1 rounded-lg bg-stone-800/90 text-stone-300 text-xs font-medium border border-stone-700">
+                    ❄️ {currentSecretBeer.servingTemp}
+                  </span>
+                )}
+                {currentSecretBeer?.foodPairings?.map((food, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-semibold border border-amber-500/20">
+                    🥘 {food}
+                  </span>
+                ))}
+              </div>
+
+              {currentSecretBeer?.trivia && (
+                <div className="mt-4 p-3.5 rounded-2xl bg-black/40 border border-stone-800 text-stone-300 text-sm italic">
+                  „{currentSecretBeer.trivia}“
+                </div>
+              )}
+
+              <div className="mt-4 inline-block px-5 py-2 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm">
+                Euer Notenschnitt am Tisch: <strong>{avgScore} / 10 Sterne ⭐</strong>
+              </div>
             </div>
-          )}
-
-          <div className="mt-4 inline-block px-5 py-2 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm">
-            Euer Notenschnitt am Tisch: <strong>{avgScore} / 10 Sterne ⭐</strong>
           </div>
         </div>
 

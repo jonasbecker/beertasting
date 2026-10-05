@@ -26,6 +26,10 @@ export interface Beer {
   notes?: string;
   priceCategory?: PriceCategory;
   priceEur?: number;
+  ibu?: number;
+  servingTemp?: string;
+  foodPairings?: string[];
+  bottleType?: 'green_embossed' | 'amber_bottle' | 'supermarket_can' | 'black_craft' | 'gourmet_black';
 }
 
 export interface Player {
