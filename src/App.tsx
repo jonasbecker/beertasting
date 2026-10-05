@@ -5,6 +5,7 @@ import { soundController } from './utils/audio';
 import { Header } from './components/Header';
 import { BottomNavBar } from './components/BottomNavBar';
 import { ActiveTastingView } from './components/ActiveTastingView';
+import { PcGuidedTastingView } from './components/PcGuidedTastingView';
 import { MultiplayerTastingView } from './components/MultiplayerTastingView';
 import { BeerLeaderboardView } from './components/BeerLeaderboardView';
 import { PlayerLeaderboardView } from './components/PlayerLeaderboardView';
@@ -107,8 +108,8 @@ export default function App() {
         isFiestaPlaying={isFiestaPlaying}
       />
 
-      {/* Main Mobile App Screen Container */}
-      <main className={`w-full max-w-lg mx-auto px-3 ${activeTab === 'tasting' ? 'h-[calc(100dvh-112px)] overflow-hidden flex flex-col py-1.5' : 'flex-1 py-4 pb-20'}`}>
+      {/* Main Screen Container - Responsive & Wide on PC/Laptop */}
+      <main className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex-1 py-4 pb-24">
         {activeTab === 'tasting' && (
           playMode === 'multiplayer' ? (
             <MultiplayerTastingView
@@ -119,13 +120,11 @@ export default function App() {
               onOpenCertificates={() => setShowCertificates(true)}
             />
           ) : (
-            <ActiveTastingView
+            <PcGuidedTastingView
               session={session}
               onUpdateSession={handleUpdateSession}
-              onNavigateToLeaderboard={() => setActiveTab('beers')}
-              onOpenScanner={() => setShowScanner(true)}
-              onSwitchToMultiplayer={() => setPlayMode('multiplayer')}
               onOpenCertificates={() => setShowCertificates(true)}
+              onOpenScanner={() => setShowScanner(true)}
             />
           )
         )}
