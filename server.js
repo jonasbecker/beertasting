@@ -549,11 +549,16 @@ wss.on("connection", (ws) => {
   });
 });
 async function startServer() {
-  const hasDist = fs.existsSync(path.join(__dirname, "dist", "index.html"));
-  if (process.env.NODE_ENV === "production" || hasDist) {
-    app.use(express.static(path.join(__dirname, "dist")));
+  const distPath = path.join(__dirname, "dist");
+  const indexHtml = path.join(distPath, "index.html");
+  if (process.env.NODE_ENV === "production" && fs.existsSync(indexHtml)) {
+    app.use(express.static(distPath));
     app.get("*", (_req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      if (fs.existsSync(indexHtml)) {
+        res.sendFile(indexHtml);
+      } else {
+        res.status(503).send("Building... Bitte Seite in 5 Sekunden neu laden.");
+      }
     });
   } else {
     const { createServer } = await import("vite");
