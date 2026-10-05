@@ -94,6 +94,7 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
   // Turn management: Random player order for the round
   const [randomPlayerIds, setRandomPlayerIds] = useState<string[]>([]);
   const [currentPlayerTurnIdx, setCurrentPlayerTurnIdx] = useState<number>(0);
+  const [isDrumrolling, setIsDrumrolling] = useState<boolean>(false);
 
   // Ratings store for the active round: player ID -> input
   const [currentRoundRatings, setCurrentRoundRatings] = useState<Record<string, {
@@ -109,17 +110,33 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
   // New player input in setup
   const [newPlayerName, setNewPlayerName] = useState('');
 
+  // Fallback player in case session.players is empty
+  const fallbackPlayer: Player = {
+    id: 'player-default',
+    name: 'Spieler',
+    nickname: 'Sommelier',
+    avatarEmoji: '🍺',
+    totalPoints: 0,
+    correctStyleGuesses: 0,
+    totalGuesses: 0,
+    matchedFlavorsCount: 0,
+    fastestDrinkSeconds: null,
+    averageRatingGiven: 0,
+    beersTastedCount: 0,
+    badges: []
+  };
+
   // Determine who pours for the current round
   const activeZapfmeister = (() => {
     if (zapfmeisterMode === 'fixed') {
-      return session.players.find(p => p.id === fixedZapfmeisterId) || session.players[0];
+      return session.players.find(p => p.id === fixedZapfmeisterId) || session.players[0] || fallbackPlayer;
     }
     const idx = currentRoundIdx % Math.max(1, session.players.length);
-    return session.players[idx] || session.players[0];
+    return session.players[idx] || session.players[0] || fallbackPlayer;
   })();
 
-  // Current secret beer to pour
-  const currentSecretBeer: Beer | undefined = session.beers[currentRoundIdx];
+  // Current secret beer to pour (guaranteed non-null)
+  const currentSecretBeer: Beer = session.beers[currentRoundIdx] || session.beers[0] || DEFAULT_SPANISH_BEERS[0];
 
   // Helper to shuffle array
   const shuffleArray = <T,>(arr: T[]): T[] => {
@@ -128,8 +145,9 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
 
   // When step changes to TASTING_INPUT, generate a new random turn order!
   const startTastingTurnPhase = () => {
-    const randomized = shuffleArray(session.players.map(p => p.id));
-    setRandomPlayerIds(randomized);
+    const playerIds = session.players.map(p => p.id);
+    const randomized = shuffleArray(playerIds);
+    setRandomPlayerIds(randomized.length > 0 ? randomized : playerIds);
     setCurrentPlayerTurnIdx(0);
 
     const initial: typeof currentRoundRatings = {};
@@ -142,8 +160,18 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
       };
     });
     setCurrentRoundRatings(initial);
+    setIsDrumrolling(false);
     setStep('TASTING_INPUT');
   };
+
+  // Ensure queue is populated whenever entering TASTING_INPUT
+  useEffect(() => {
+    if (step === 'TASTING_INPUT') {
+      if (randomPlayerIds.length === 0 || randomPlayerIds.length !== session.players.length) {
+        startTastingTurnPhase();
+      }
+    }
+  }, [step, session.players.length]);
 
   // Keyboard shortcut support (Space = Next/Reveal, etc.)
   useEffect(() => {
@@ -247,8 +275,8 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
   };
 
   // Turn management: Active player in random order
-  const activePlayerId = randomPlayerIds[currentPlayerTurnIdx] || session.players[0]?.id;
-  const activePlayer = session.players.find(p => p.id === activePlayerId) || session.players[0];
+  const activePlayerId = randomPlayerIds[currentPlayerTurnIdx] || session.players[0]?.id || fallbackPlayer.id;
+  const activePlayer = session.players.find(p => p.id === activePlayerId) || session.players[0] || fallbackPlayer;
 
   const currentActiveInput = currentRoundRatings[activePlayerId] || {
     guessedStyle: 'Lager',
@@ -261,122 +289,173 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
     setCurrentRoundRatings(prev => ({
       ...prev,
       [activePlayerId]: {
-        ...prev[activePlayerId],
+        ...(prev[activePlayerId] || {
+          guessedStyle: 'Lager',
+          score: 14,
+          guessedPrice: 'classic_bar',
+          isCompleted: false
+        }),
         [field]: value
       }
     }));
   };
 
+  const finalizeReveal = (ratingsToUse: Record<string, any>) => {
+    try {
+      soundController.playCheers();
+    } catch (e) {
+      console.warn('Audio cheers error:', e);
+    }
+    try {
+      fireFiestaConfetti();
+    } catch (e) {
+      console.warn('Confetti error:', e);
+    }
+
+    const beerToReveal = currentSecretBeer || session.beers[currentRoundIdx] || session.beers[0] || DEFAULT_SPANISH_BEERS[0];
+
+    // Compute round results and update player points
+    const roundRatings: Record<string, PlayerRoundRating> = {};
+    const updatedPlayers = session.players.map(player => {
+      const ratingInput = ratingsToUse[player.id] || currentRoundRatings[player.id] || {
+        guessedStyle: 'Lager',
+        score: 14,
+        guessedPrice: 'classic_bar',
+        isCompleted: true
+      };
+
+      // Compare style and price
+      const isStyleMatch = ratingInput.guessedStyle === beerToReveal.style;
+      const isPriceMatch = ratingInput.guessedPrice === (beerToReveal.priceCategory || 'classic_bar');
+
+      let pointsEarned = 0;
+      if (isStyleMatch) pointsEarned += 100; // Correct style bonus
+      if (isPriceMatch) pointsEarned += 25;  // Correct price category bonus
+
+      const playerRatingRecord: PlayerRoundRating = {
+        playerId: player.id,
+        score: Number(ratingInput.score) || 14,
+        guessedStyle: ratingInput.guessedStyle || 'Lager',
+        guessedPriceCategory: ratingInput.guessedPrice || 'classic_bar',
+        timeSeconds: 25,
+        speedBonusPoints: 0,
+        stylePoints: isStyleMatch ? 100 : 0,
+        pricePoints: isPriceMatch ? 25 : 0,
+        isPriceMatch,
+        flavorPoints: 0,
+        matchedFlavors: [],
+        totalPointsEarned: pointsEarned,
+        flavorTags: [],
+        isHost: player.id === activeZapfmeister.id
+      };
+
+      roundRatings[player.id] = playerRatingRecord;
+
+      const oldAvg = typeof player.averageRatingGiven === 'number' ? player.averageRatingGiven : 0;
+      const oldCount = typeof player.beersTastedCount === 'number' ? player.beersTastedCount : 0;
+      const roundScore = Number(ratingInput.score) || 14;
+
+      return {
+        ...player,
+        totalPoints: (player.totalPoints || 0) + pointsEarned,
+        correctStyleGuesses: (player.correctStyleGuesses || 0) + (isStyleMatch ? 1 : 0),
+        correctPriceGuesses: (player.correctPriceGuesses || 0) + (isPriceMatch ? 1 : 0),
+        totalGuesses: (player.totalGuesses || 0) + 1,
+        beersTastedCount: oldCount + 1,
+        averageRatingGiven: Math.round(((oldAvg * oldCount) + roundScore) / (oldCount + 1))
+      };
+    });
+
+    const newRound: TastingRound = {
+      roundNumber: currentRoundIdx + 1,
+      secretBeerId: beerToReveal.id,
+      hostPlayerId: activeZapfmeister.id,
+      ratings: roundRatings,
+      isCompleted: true,
+      timestamp: Date.now()
+    };
+
+    const updatedRounds = [...session.rounds];
+    updatedRounds[currentRoundIdx] = newRound;
+
+    onUpdateSession({
+      ...session,
+      players: updatedPlayers,
+      rounds: updatedRounds,
+      currentRoundIndex: currentRoundIdx
+    });
+
+    setIsDrumrolling(false);
+    setStep('REVEAL');
+  };
+
+  const handleTriggerReveal = (ratingsToUse?: Record<string, any>) => {
+    const ratings = ratingsToUse || currentRoundRatings;
+    setIsDrumrolling(true);
+
+    try {
+      soundController.playDrumroll();
+    } catch (e) {
+      console.warn('Audio drumroll error:', e);
+    }
+
+    setTimeout(() => {
+      finalizeReveal(ratings);
+    }, 1100);
+  };
+
   // Next player or trigger reveal
   const handleConfirmPlayerTurn = () => {
-    soundController.playBeerOpen();
+    try {
+      soundController.playBeerOpen();
+    } catch (e) {
+      console.warn('Audio beer open error:', e);
+    }
 
-    // Mark current player completed
-    setCurrentRoundRatings(prev => ({
-      ...prev,
+    const currentInput = currentRoundRatings[activePlayerId] || {
+      guessedStyle: 'Lager',
+      score: 14,
+      guessedPrice: 'classic_bar',
+      isCompleted: true
+    };
+
+    const nextRatings = {
+      ...currentRoundRatings,
       [activePlayerId]: {
-        ...prev[activePlayerId],
+        ...currentInput,
         isCompleted: true
       }
-    }));
+    };
+    setCurrentRoundRatings(nextRatings);
 
     if (currentPlayerTurnIdx + 1 < randomPlayerIds.length) {
       // Advance to next random player
       setCurrentPlayerTurnIdx(prev => prev + 1);
     } else {
       // All players finished! Trigger big reveal!
-      handleTriggerReveal();
+      handleTriggerReveal(nextRatings);
     }
-  };
-
-  const handleTriggerReveal = () => {
-    if (!currentSecretBeer) return;
-
-    soundController.playDrumroll();
-
-    setTimeout(() => {
-      soundController.playCheers();
-      fireFiestaConfetti();
-
-      // Compute round results and update player points
-      const roundRatings: Record<string, PlayerRoundRating> = {};
-      const updatedPlayers = session.players.map(player => {
-        const ratingInput = currentRoundRatings[player.id];
-        if (!ratingInput) return player;
-
-        // Compare style and price
-        const isStyleMatch = ratingInput.guessedStyle === currentSecretBeer.style;
-        const isPriceMatch = ratingInput.guessedPrice === currentSecretBeer.priceCategory;
-
-        let pointsEarned = 0;
-        if (isStyleMatch) pointsEarned += 100; // Correct style bonus
-        if (isPriceMatch) pointsEarned += 25;  // Correct price category bonus
-
-        const playerRatingRecord: PlayerRoundRating = {
-          playerId: player.id,
-          score: ratingInput.score, // 1 to 20
-          guessedStyle: ratingInput.guessedStyle,
-          guessedPriceCategory: ratingInput.guessedPrice,
-          timeSeconds: 25,
-          speedBonusPoints: 0,
-          stylePoints: isStyleMatch ? 100 : 0,
-          pricePoints: isPriceMatch ? 25 : 0,
-          isPriceMatch,
-          flavorPoints: 0,
-          matchedFlavors: [],
-          totalPointsEarned: pointsEarned,
-          flavorTags: [],
-          isHost: player.id === activeZapfmeister.id
-        };
-
-        roundRatings[player.id] = playerRatingRecord;
-
-        return {
-          ...player,
-          totalPoints: player.totalPoints + pointsEarned,
-          correctStyleGuesses: player.correctStyleGuesses + (isStyleMatch ? 1 : 0),
-          totalGuesses: player.totalGuesses + 1,
-          beersTastedCount: player.beersTastedCount + 1,
-          averageRatingGiven: Math.round(((player.averageRatingGiven * player.beersTastedCount) + ratingInput.score) / (player.beersTastedCount + 1))
-        };
-      });
-
-      const newRound: TastingRound = {
-        roundNumber: currentRoundIdx + 1,
-        secretBeerId: currentSecretBeer.id,
-        hostPlayerId: activeZapfmeister.id,
-        ratings: roundRatings,
-        isCompleted: true,
-        timestamp: Date.now()
-      };
-
-      const updatedRounds = [...session.rounds];
-      updatedRounds[currentRoundIdx] = newRound;
-
-      onUpdateSession({
-        ...session,
-        players: updatedPlayers,
-        rounds: updatedRounds,
-        currentRoundIndex: currentRoundIdx
-      });
-
-      setStep('REVEAL');
-    }, 1800);
   };
 
   const handleProceedToNextRound = () => {
     const nextIdx = currentRoundIdx + 1;
     if (nextIdx >= session.beers.length) {
-      soundController.playTada();
-      fireFiestaConfetti();
+      try {
+        soundController.playTada();
+      } catch {}
+      try {
+        fireFiestaConfetti();
+      } catch {}
       onUpdateSession({
         ...session,
         isFinished: true
       });
+      setIsDrumrolling(false);
       setStep('FINAL_PODIUM');
     } else {
       setCurrentRoundIdx(nextIdx);
       setIsVeilOpen(false);
+      setIsDrumrolling(false);
       setStep('SECRET_POUR');
     }
   };
@@ -674,7 +753,7 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
                 <button
                   onClick={() => {
                     setIsVeilOpen(true);
-                    soundController.playBeerOpen();
+                    try { soundController.playBeerOpen(); } catch {}
                   }}
                   className="w-full sm:w-auto px-8 py-4 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-lg rounded-2xl shadow-lg flex items-center justify-center gap-3 mx-auto transition transform hover:scale-105"
                 >
@@ -682,6 +761,14 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
                   <span>Ich bin {activeZapfmeister.name} – Bier aufdecken!</span>
                 </button>
                 <div className="text-stone-400 text-xs mt-2 font-medium">(Oder drücke die Leertaste)</div>
+
+                <button
+                  type="button"
+                  onClick={handleFinishedPouring}
+                  className="mt-4 text-xs font-semibold text-stone-400 hover:text-amber-400 underline decoration-stone-600 hover:decoration-amber-400 block mx-auto transition"
+                >
+                  Bier schon im Glas? ➔ Direkt zur Verkostung springen
+                </button>
               </div>
             </div>
           ) : (
@@ -805,24 +892,27 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
               const p = session.players.find(x => x.id === pId);
               if (!p) return null;
               const isCurrent = idx === currentPlayerTurnIdx;
-              const isDone = idx < currentPlayerTurnIdx;
+              const isDone = idx < currentPlayerTurnIdx || currentRoundRatings[p.id]?.isCompleted;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={p.id}
+                  onClick={() => setCurrentPlayerTurnIdx(idx)}
+                  title={`Zu ${p.name} wechseln`}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shrink-0 transition ${
                     isCurrent
                       ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md scale-105'
                       : isDone
-                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30'
-                      : 'bg-stone-800/60 text-stone-400 border-stone-700/60'
+                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/50'
+                      : 'bg-stone-800/60 text-stone-400 border-stone-700/60 hover:bg-stone-700/70 hover:text-stone-200'
                   }`}
                 >
                   <span>{p.avatarEmoji}</span>
                   <span>{p.name}</span>
                   {isDone && <Check className="w-3.5 h-3.5" />}
                   {isCurrent && <span className="text-[10px] bg-stone-950 text-amber-400 px-1 rounded ml-1">DRAN</span>}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -969,23 +1059,77 @@ export const PcGuidedTastingView: React.FC<PcGuidedTastingViewProps> = ({
             </div>
           </div>
 
-          {/* Confirm Button */}
-          <div className="pt-4 border-t border-stone-800 flex justify-end">
+          {/* Confirm Button & Direct Reveal Bypass */}
+          <div className="pt-4 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <button
-              onClick={handleConfirmPlayerTurn}
-              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-stone-950 font-black text-lg rounded-2xl shadow-xl flex items-center justify-center gap-3 transition transform hover:scale-[1.02] active:scale-[0.98]"
+              type="button"
+              onClick={() => handleTriggerReveal()}
+              className="text-xs font-bold text-stone-400 hover:text-amber-400 flex items-center gap-1.5 transition underline decoration-stone-600 hover:decoration-amber-400 py-1"
             >
-              {isLastPlayer ? (
+              <span>⚡ Vorzeitig auflösen (Direkt zur Auflösung)</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleConfirmPlayerTurn}
+              disabled={isDrumrolling}
+              className={`w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-stone-950 font-black text-lg rounded-2xl shadow-xl flex items-center justify-center gap-3 transition transform hover:scale-[1.02] active:scale-[0.98] ${
+                isDrumrolling ? 'opacity-75 cursor-wait' : ''
+              }`}
+            >
+              {isDrumrolling ? (
+                <>
+                  <span className="animate-spin text-xl">⏳</span>
+                  <span>Trommelwirbel... Auflösung lädt! 🥁</span>
+                </>
+              ) : isLastPlayer ? (
                 <>
                   <span>Alle fertig! ➔ ZUR AUFLÖSUNG! 🥁</span>
                   <PartyPopper className="w-5 h-5" />
                 </>
               ) : (
                 <>
-                  <span>Tipp von {activePlayer.name} speichern ➔ Weiter</span>
+                  <span>Tipp von {activePlayer.name} speichern ➔ Weiter ({currentPlayerTurnIdx + 1}/{randomPlayerIds.length || session.players.length})</span>
                   <ChevronRight className="w-5 h-5 stroke-[3]" />
                 </>
               )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // RENDER: SUSPENSE DRUMROLL (TROMMELWIRBEL VOR DER AUFLÖSUNG)
+  // -------------------------------------------------------------
+  if (isDrumrolling) {
+    return (
+      <div className="w-full max-w-3xl mx-auto py-12 px-4 text-center space-y-8 animate-fade-in text-stone-100">
+        <div className="bg-gradient-to-b from-stone-900 via-amber-950/40 to-stone-950 border-2 border-amber-500/60 rounded-3xl p-8 sm:p-12 shadow-2xl space-y-6 relative overflow-hidden">
+          <div className="w-24 h-24 mx-auto rounded-3xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-5xl shadow-xl animate-bounce">
+            🥁
+          </div>
+          <div>
+            <div className="inline-block px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400 text-amber-400 font-black text-xs uppercase tracking-wider mb-3">
+              Runde {currentRoundIdx + 1} von {session.beers.length} • Alle Tipps abgegeben!
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+              Trommelwirbel läuft...
+            </h1>
+            <p className="text-stone-300 text-base sm:text-lg mt-2 max-w-lg mx-auto">
+              Wer am Tisch hat den richtigen Stil und Preis erkannt? Die Auflösung wird enthüllt!
+            </p>
+          </div>
+
+          <div className="pt-4 flex justify-center">
+            <button
+              onClick={() => finalizeReveal(currentRoundRatings)}
+              className="px-8 py-3.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-stone-950 font-black text-base rounded-2xl shadow-lg flex items-center gap-2 transition transform hover:scale-105"
+            >
+              <span>⚡ Sofort aufdecken</span>
+              <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
           </div>
         </div>

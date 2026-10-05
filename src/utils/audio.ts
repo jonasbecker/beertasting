@@ -39,64 +39,68 @@ class SoundController {
    * Sound: Kronkorken Zischen & Plopp (Bottle open)
    */
   public playBeerOpen() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
+    try {
+      if (this.isMuted) return;
+      const ctx = this.getContext();
+      if (!ctx) return;
 
-    const now = ctx.currentTime;
+      const now = ctx.currentTime;
 
-    // 1. Noise burst for carbonation hiss
-    const bufferSize = ctx.sampleRate * 0.25;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08));
+      // 1. Noise burst for carbonation hiss
+      const bufferSize = ctx.sampleRate * 0.25;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08));
+      }
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(2500, now);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.4, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+      noise.start(now);
+
+      // 2. Resonant glass bottle pop & metallic "clink"
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.09);
+
+      oscGain.gain.setValueAtTime(0.6, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+      osc.connect(oscGain);
+      oscGain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.15);
+
+      // High metal harmonic clink
+      const clink = ctx.createOscillator();
+      const clinkGain = ctx.createGain();
+      clink.type = 'triangle';
+      clink.frequency.setValueAtTime(2200, now);
+      clinkGain.gain.setValueAtTime(0.15, now);
+      clinkGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+      clink.connect(clinkGain);
+      clinkGain.connect(ctx.destination);
+      clink.start(now);
+      clink.stop(now + 0.2);
+    } catch (e) {
+      console.warn('Audio playBeerOpen silenced:', e);
     }
-
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'highpass';
-    filter.frequency.setValueAtTime(2500, now);
-
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.4, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-
-    noise.connect(filter);
-    filter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noise.start(now);
-
-    // 2. Resonant glass bottle pop & metallic "clink"
-    const osc = ctx.createOscillator();
-    const oscGain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(450, now);
-    osc.frequency.exponentialRampToValueAtTime(120, now + 0.09);
-
-    oscGain.gain.setValueAtTime(0.6, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-    osc.connect(oscGain);
-    oscGain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.15);
-
-    // High metal harmonic clink
-    const clink = ctx.createOscillator();
-    const clinkGain = ctx.createGain();
-    clink.type = 'triangle';
-    clink.frequency.setValueAtTime(2200, now);
-    clinkGain.gain.setValueAtTime(0.15, now);
-    clinkGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-    clink.connect(clinkGain);
-    clinkGain.connect(ctx.destination);
-    clink.start(now);
-    clink.stop(now + 0.2);
   }
 
   /**
@@ -127,44 +131,60 @@ class SoundController {
    * Sound: Drumroll / Suspense before reveal
    */
   public playSuspense() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
+    try {
+      if (this.isMuted) return;
+      const ctx = this.getContext();
+      if (!ctx) return;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(50, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(160, ctx.currentTime + 1.5);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
-    osc.stop(ctx.currentTime + 1.5);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(50, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(160, ctx.currentTime + 1.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+      osc.stop(ctx.currentTime + 1.5);
+    } catch (e) {
+      console.warn('Audio playSuspense silenced:', e);
+    }
+  }
+
+  public playDrumroll() {
+    this.playSuspense();
+  }
+
+  public playCheers() {
+    this.playGlassesCheers();
   }
 
   /**
    * Sound: Tada fanfare chord
    */
   public playTada() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
+    try {
+      if (this.isMuted) return;
+      const ctx = this.getContext();
+      if (!ctx) return;
 
-    [523.25, 659.25, 783.99, 1046.5].forEach((freq) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
-      osc.stop(ctx.currentTime + 1.5);
-    });
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+        osc.stop(ctx.currentTime + 1.5);
+      });
+    } catch (e) {
+      console.warn('Audio playTada silenced:', e);
+    }
   }
 
   /**
@@ -303,50 +323,54 @@ class SoundController {
    * High resonant chime of crystal beer/wine glasses knocking together
    */
   public playGlassesCheers() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
+    try {
+      if (this.isMuted) return;
+      const ctx = this.getContext();
+      if (!ctx) return;
 
-    const now = ctx.currentTime;
+      const now = ctx.currentTime;
 
-    // Two distinct glass impacts: primary clink, and subtle second rebound clink
-    const clinks = [
-      { delay: 0.00, primaryFreq: 2480, secondaryFreq: 3340, volume: 0.4 },
-      { delay: 0.08, primaryFreq: 2750, secondaryFreq: 3620, volume: 0.28 },
-      { delay: 0.22, primaryFreq: 2480, secondaryFreq: 3340, volume: 0.15 }
-    ];
+      // Two distinct glass impacts: primary clink, and subtle second rebound clink
+      const clinks = [
+        { delay: 0.00, primaryFreq: 2480, secondaryFreq: 3340, volume: 0.4 },
+        { delay: 0.08, primaryFreq: 2750, secondaryFreq: 3620, volume: 0.28 },
+        { delay: 0.22, primaryFreq: 2480, secondaryFreq: 3340, volume: 0.15 }
+      ];
 
-    clinks.forEach(({ delay, primaryFreq, secondaryFreq, volume }) => {
-      const t = now + delay;
+      clinks.forEach(({ delay, primaryFreq, secondaryFreq, volume }) => {
+        const t = now + delay;
 
-      // Primary glass resonance
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(primaryFreq, t);
+        // Primary glass resonance
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(primaryFreq, t);
 
-      gain1.gain.setValueAtTime(volume, t);
-      gain1.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+        gain1.gain.setValueAtTime(volume, t);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
 
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(t);
-      osc1.stop(t + 1.5);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(t);
+        osc1.stop(t + 1.5);
 
-      // Higher glass overtone shimmer
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(secondaryFreq, t);
+        // Higher glass overtone shimmer
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(secondaryFreq, t);
 
-      gain2.gain.setValueAtTime(volume * 0.5, t);
-      gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        gain2.gain.setValueAtTime(volume * 0.5, t);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
 
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(t);
-      osc2.stop(t + 1.0);
-    });
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(t);
+        osc2.stop(t + 1.0);
+      });
+    } catch (e) {
+      console.warn('Audio playGlassesCheers silenced:', e);
+    }
   }
 
   /**
