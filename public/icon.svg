@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141824"/>
+      <stop offset="100%" stop-color="#090b10"/>
+    </linearGradient>
+    <linearGradient id="beerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="foamGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#fef3c7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded rectangle -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Golden Ring border -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#f59e0b" stroke-width="8" stroke-opacity="0.3"/>
+
+  <!-- Spanish Sun rays at top -->
+  <circle cx="256" cy="140" r="44" fill="#f59e0b" fill-opacity="0.15"/>
+  <circle cx="256" cy="140" r="32" fill="#d97706" fill-opacity="0.25"/>
+
+  <!-- Beer Glass Handle -->
+  <path d="M 330 230 C 390 230, 390 350, 330 350" fill="none" stroke="#f59e0b" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- Beer Glass Body -->
+  <path d="M 175 190 L 195 380 C 197 400, 215 415, 235 415 L 285 415 C 305 415, 323 400, 325 380 L 345 190 Z" fill="url(#beerGrad)"/>
+
+  <!-- Beer Bubbles -->
+  <circle cx="240" cy="360" r="6" fill="#fef3c7" opacity="0.6"/>
+  <circle cx="270" cy="330" r="8" fill="#fef3c7" opacity="0.7"/>
+  <circle cx="230" cy="280" r="7" fill="#fef3c7" opacity="0.6"/>
+  <circle cx="280" cy="250" r="9" fill="#fef3c7" opacity="0.7"/>
+  <circle cx="250" cy="210" r="6" fill="#fef3c7" opacity="0.5"/>
+
+  <!-- Frothy Beer Foam Crown -->
+  <path d="M 160 190 C 160 170, 180 155, 205 165 C 220 150, 245 145, 265 155 C 285 140, 315 145, 325 165 C 345 160, 360 175, 360 190 C 360 205, 340 215, 325 210 C 305 220, 275 220, 256 210 C 235 220, 205 220, 185 210 C 170 215, 160 205, 160 190 Z" fill="url(#foamGrad)"/>
+
+  <!-- Crown on foam for Xàbia Royalty -->
+  <path d="M 232 120 L 244 135 L 256 115 L 268 135 L 280 120 L 276 145 L 236 145 Z" fill="#fbbf24"/>
+  <circle cx="232" cy="118" r="3" fill="#fef08a"/>
+  <circle cx="256" cy="113" r="3.5" fill="#fef08a"/>
+  <circle cx="280" cy="118" r="3" fill="#fef08a"/>
+
+  <!-- Banner text 'XÀBIA' -->
+  <text x="256" y="465" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="34" fill="#f59e0b" text-anchor="middle" letter-spacing="5">CERVEZA XÀBIA</text>
+</svg>
