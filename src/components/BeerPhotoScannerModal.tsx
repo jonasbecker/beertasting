@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, Upload, X, Check, Loader2, Sparkles, Plus, AlertCircle, Trash2, Beer as BeerIcon } from 'lucide-react';
 import { Beer, BeerStyle } from '../types';
 import { soundController } from '../utils/audio';
+import { DEFAULT_SPANISH_BEERS } from '../data/spanishBeers';
 
 interface BeerPhotoScannerModalProps {
   isOpen: boolean;
@@ -191,18 +192,42 @@ export const BeerPhotoScannerModal: React.FC<BeerPhotoScannerModalProps> = ({
         {/* Upload Zone */}
         {recognizedBeers.length === 0 && (
           <div className="space-y-4">
-            <p className="font-hand text-2xl text-stone-800 leading-snug">
-              Fotografiere eure Bierflaschen oder Dosen auf dem Tisch in Xàbia. Die KI erkennt automatisch alle Biere, Alkoholgehalt, Bierstile und Geschmacksnoten!
+            {/* Quick 18 Kitchen Beers Preset Banner */}
+            <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+              <div className="text-left">
+                <div className="font-extrabold text-amber-400 text-sm flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Eure 18 Biere aus dem Foto (Küchenzeile)</span>
+                </div>
+                <div className="text-xs text-stone-300 mt-0.5">
+                  Stella, Corona, Leffe, Erdinger, Heineken, Karlsquell, Voll-Damm, Amstel Oro, Cerdo Volador etc.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRecognizedBeers(DEFAULT_SPANISH_BEERS);
+                  soundController.playTada();
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black text-xs rounded-xl shadow-lg hover:brightness-110 flex items-center justify-center gap-1.5 shrink-0 transition active:scale-95"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>18 Biere jetzt laden</span>
+              </button>
+            </div>
+
+            <p className="text-sm text-stone-300 leading-snug">
+              Oder fotografiere eure Flaschen und Dosen direkt hier – die Erkennung analysiert alle Etiketten, Marken, Stile und Alkoholgehalte:
             </p>
 
             {/* Photo Picker Options */}
             <div className="grid grid-cols-2 gap-3">
-              <label className="p-4 bg-white/95 border-2 border-dashed border-[#2980b9] rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-50 transition-colors text-center active:scale-95 shadow-sm">
-                <Camera className="w-8 h-8 text-[#2980b9]" />
-                <span className="font-hand font-bold text-2xl text-[#2980b9]">
+              <label className="p-4 bg-stone-900 border-2 border-dashed border-amber-500/50 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-800/80 transition text-center active:scale-95 shadow-sm">
+                <Camera className="w-7 h-7 text-amber-400" />
+                <span className="font-bold text-base text-white">
                   Foto aufnehmen
                 </span>
-                <span className="font-sans text-xs text-stone-500">Handy-Kamera öffnen</span>
+                <span className="text-xs text-stone-400">Handy-Kamera öffnen</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -213,12 +238,12 @@ export const BeerPhotoScannerModal: React.FC<BeerPhotoScannerModalProps> = ({
                 />
               </label>
 
-              <label className="p-4 bg-white/95 border-2 border-dashed border-[#d35400] rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-50 transition-colors text-center active:scale-95 shadow-sm">
-                <Upload className="w-8 h-8 text-[#d35400]" />
-                <span className="font-hand font-bold text-2xl text-[#d35400]">
+              <label className="p-4 bg-stone-900 border-2 border-dashed border-amber-500/50 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-800/80 transition text-center active:scale-95 shadow-sm">
+                <Upload className="w-7 h-7 text-amber-400" />
+                <span className="font-bold text-base text-white">
                   Fotos wählen
                 </span>
-                <span className="font-sans text-xs text-stone-500">Aus der Galerie</span>
+                <span className="text-xs text-stone-400">Aus der Galerie</span>
                 <input
                   type="file"
                   accept="image/*"

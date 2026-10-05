@@ -1,7 +1,7 @@
 import { TournamentSession, Player, Beer, AccentColor } from '../types';
 import { DEFAULT_SPANISH_BEERS } from '../data/spanishBeers';
 
-const STORAGE_KEY = 'cerveza_xabia_tasting_session_v2';
+const STORAGE_KEY = 'cerveza_xabia_tasting_session_v3_18beers';
 
 export const DEFAULT_PLAYERS: Player[] = [
   {

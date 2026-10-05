@@ -25,127 +25,223 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const rooms = new Map<string, MultiplayerRoom>();
 const clientSockets = new Map<WebSocket, { roomCode: string; playerId: string }>();
 
-// Pre-defined fallback Spanish craft & supermarket beers for Xàbia / Costa Blanca
+// Pre-defined fallback beers matching the exact 18 kitchen counter beers from Xàbia
 const SPANISH_BEER_DEFAULTS = [
   {
-    name: "Alhambra Reserva 1925",
-    brewery: "Cervezas Alhambra",
-    origin: "Granada",
-    style: "Helles Bock",
-    abv: 6.4,
-    description: "Kultige grüne Flasche ohne Papieretikett. Vollmundig, edel, malzig mit feiner Hopfenbittere.",
-    flavorProfile: ["Malzig", "Karamell", "Hopfig-Herb", "Würzig"],
-    trivia: "In ganz Spanien liebevoll 'La Verde' (die Grüne) genannt. Gefährlich süffig trotz 6,4%!",
-    priceCategory: "premium_craft",
-    priceEur: 1.85
+    name: "Stella Artois",
+    brewery: "Stella Artois (AB InBev)",
+    origin: "Belgien",
+    style: "Lager",
+    abv: 5.0,
+    description: "Klassisches europäisches Premium-Lager. Goldgelb, feiner floraler Hopfen und knackig-erfrischender Abgang.",
+    flavorProfile: ["Spritzig", "Hopfig-Herb", "Mild", "Süffig"],
+    trivia: "Tradition seit 1366 aus Leuven in Belgien. Auf der Küchenzeile ganz links in der edlen grünen Flasche mit Goldfolie!",
+    priceCategory: "classic_bar",
+    priceEur: 1.30
   },
   {
-    name: "Turia Märzen",
-    brewery: "Damm",
-    origin: "Valencia",
-    style: "Märzen / Amber",
-    abv: 5.4,
-    description: "Das Aushängeschild der Region Valencia und Xàbia. Kräftig geröstetes Malz und feinherb.",
-    flavorProfile: ["Röstig", "Malzig", "Karamell", "Süffig"],
-    trivia: "Benannt nach dem Turia-Fluss in Valencia. Das Kultbier an der Costa Blanca zu Paella und Tapas!",
+    name: "Corona Cerveza",
+    brewery: "Grupo Modelo",
+    origin: "Mexiko",
+    style: "Lager",
+    abv: 4.5,
+    description: "Kultige durchsichtige Flasche. Extrem leicht, strohgelb, erfrischend süffig und sommerlich mild.",
+    flavorProfile: ["Mild", "Spritzig", "Süffig", "Zitrusfrisch"],
+    trivia: "Das weltberühmte mexikanische Strandbier – gehört zu jedem Urlaub an der spanischen Küste!",
+    priceCategory: "classic_bar",
+    priceEur: 1.45
+  },
+  {
+    name: "Leffe Blonde",
+    brewery: "Abbaye de Leffe",
+    origin: "Belgien",
+    style: "Anderer Stil",
+    abv: 6.6,
+    description: "Belgisches Kloster-Blondbier mit gelbem Etikett. Noten von Nelke, süßem Malz, Vanille und reifem Apfel.",
+    flavorProfile: ["Fruchtig", "Würzig", "Malzig", "Süffig"],
+    trivia: "Bereits 1240 von den Mönchen in Dinant gebraut. Kräftige 6,6% vol mit eleganter Süße.",
+    priceCategory: "premium_craft",
+    priceEur: 1.95
+  },
+  {
+    name: "Erdinger Weißbier",
+    brewery: "Erdinger Weißbräu",
+    origin: "Deutschland (Bayern)",
+    style: "Witbier / Weizen",
+    abv: 5.3,
+    description: "Klassisches bayerisches Hefeweizen. Feine Hefe-Trübung, Bananen- und Nelkenaromen mit stabiler Krone.",
+    flavorProfile: ["Fruchtig", "Spritzig", "Würzig", "Mild"],
+    trivia: "Der bayerische Weißbier-Klassiker auf der spanischen Finca – ein Genuss zur Siesta!",
+    priceCategory: "premium_craft",
+    priceEur: 1.80
+  },
+  {
+    name: "Heineken Original",
+    brewery: "Heineken",
+    origin: "Niederlande",
+    style: "Lager",
+    abv: 5.0,
+    description: "Grüne Dose mit rotem Stern. Charakteristische fruchtige Noten durch Heineken A-Hefe, feine Bittere.",
+    flavorProfile: ["Spritzig", "Hopfig-Herb", "Mild"],
+    trivia: "In Amsterdam 1873 gegründet. Stand im Bild oben auf der Dose Karlsquell.",
     priceCategory: "classic_bar",
     priceEur: 1.15
   },
   {
-    name: "Steinburg Clásica (Mercadona)",
-    brewery: "Font Salem / Mercadona",
-    origin: "Valencia",
+    name: "Karlsquell Suave (Aldi)",
+    brewery: "Font Salem / Aldi España",
+    origin: "Spanien",
     style: "Lager",
     abv: 4.8,
-    description: "Das ultimative spanische Supermarkt-Dosenbier für 38 Cent.",
+    description: "Weiß-grüne Dose von Aldi Spanien. Extrem schlanker Körper, minimale Bittere, maximaler Durstlöscher.",
     flavorProfile: ["Mild", "Spritzig", "Süffig"],
-    trivia: "Kostet weniger als Mineralwasser und ist das Kult-Dosenbier in ganz Spanien!",
+    trivia: "Der 35-Cent-Preishit von Aldi Spanien – stand direkt unter der Heineken-Dose!",
+    priceCategory: "mercadona_budget",
+    priceEur: 0.35
+  },
+  {
+    name: "Steinburg Especial (Mercadona)",
+    brewery: "Font Salem / Mercadona",
+    origin: "Valencia (Spanien)",
+    style: "Lager",
+    abv: 5.6,
+    description: "Rote Dose mit goldenem Stern aus dem Mercadona. Kräftiger und malziger als die grüne Clásica.",
+    flavorProfile: ["Malzig", "Süffig", "Spritzig"],
+    trivia: "Die rote 'Especial'-Variante von Mercadona für nur 42 Cent – gefährlich süffig mit 5,6%!",
+    priceCategory: "mercadona_budget",
+    priceEur: 0.42
+  },
+  {
+    name: "Steinburg Clásica (Mercadona)",
+    brewery: "Font Salem / Mercadona",
+    origin: "Valencia (Spanien)",
+    style: "Lager",
+    abv: 4.8,
+    description: "Die dunkelgrüne Kult-Dose von Mercadona für 38 Cent. Leicht, erfrischend und treuer Begleiter jeder Finca.",
+    flavorProfile: ["Mild", "Spritzig", "Süffig"],
+    trivia: "Das beliebteste Billigbier Spaniens – stand unter der roten Steinburg Especial!",
     priceCategory: "mercadona_budget",
     priceEur: 0.38
   },
   {
-    name: "Estrella Galicia Especial",
-    brewery: "Hijos de Rivera",
-    origin: "Galicien",
-    style: "Lager",
-    abv: 5.5,
-    description: "Klassisches spanisches Premium-Lager mit feiner Hopfenwürze und goldenem Glanz.",
-    flavorProfile: ["Süffig", "Spritzig", "Hopfig-Herb", "Mild"],
-    trivia: "Seit Generationen im Familienbesitz und das Lieblingsbier vieler Spanier in Strandbars.",
-    priceCategory: "classic_bar",
-    priceEur: 1.20
-  },
-  {
-    name: "1906 Reserva Especial",
-    brewery: "Hijos de Rivera",
-    origin: "Galicien",
-    style: "Helles Bock",
-    abv: 6.5,
-    description: "Dunkles Bernstein mit Röstnoten und wärmendem Körper.",
-    flavorProfile: ["Röstig", "Malzig", "Würzig", "Karamell"],
-    trivia: "Wird in Spanien 'Milnueve' genannt und räumt weltweit regelmäßig Goldmedaillen ab.",
+    name: "Charles Quint St-Michel",
+    brewery: "Brouwerij Haacht",
+    origin: "Belgien",
+    style: "Anderer Stil",
+    abv: 6.1,
+    description: "Braune Flasche mit dem Porträt von Kaiser Karl V. Aromatisch, hefebetont mit Zitrus- und Gewürznoten.",
+    flavorProfile: ["Fruchtig", "Würzig", "Hopfig-Herb", "Malzig"],
+    trivia: "Kaiser Karl V. wuchs in Flandern auf und liebte belgisches Bier so sehr, dass er es nach Spanien importieren ließ.",
     priceCategory: "premium_craft",
-    priceEur: 1.75
+    priceEur: 2.10
   },
   {
-    name: "Mahou 5 Estrellas",
-    brewery: "Mahou",
-    origin: "Madrid",
-    style: "Pilsner",
-    abv: 5.5,
-    description: "Cremiger Schaum, moderate Bittere und frischer getreidiger Geschmack.",
-    flavorProfile: ["Spritzig", "Hopfig-Herb", "Süffig"],
-    trivia: "Das berühmteste Bier Madrids – in jeder Tapas-Bar Spaniens eiskalt vom Fass gezapft.",
+    name: "Mescalina México (Cerveza + Mezcal)",
+    brewery: "Cervezas Especiales",
+    origin: "Spanien / Mexiko-Style",
+    style: "Anderer Stil",
+    abv: 4.5,
+    description: "Dunkle Flasche mit türkis-gelbem Etikett. Verfeinert mit mexikanischem Mezcal und Agavengeschmack.",
+    flavorProfile: ["Würzig", "Süffig", "Röstig", "Spritzig"],
+    trivia: "Der verrückteste Exot auf eurer Küchenzeile! Bringt eine feine rauchige Mezcal-Note ins Bier.",
     priceCategory: "classic_bar",
-    priceEur: 1.10
+    priceEur: 1.70
   },
   {
-    name: "Voll-Damm Doble Malta",
-    brewery: "Damm",
-    origin: "Barcelona",
-    style: "Doble Malta",
-    abv: 7.2,
-    description: "Doppeltes Malz: Wuchtig, intensiv und süßlich-herb.",
-    flavorProfile: ["Malzig", "Würzig", "Karamell", "Hopfig-Herb"],
-    trivia: "Stolze 7,2% Alkohol! Bringt jede Verkostungsrunde sofort auf Betriebstemperatur.",
+    name: "Birra Moretti L'Autentica",
+    brewery: "Birra Moretti (Heineken Italia)",
+    origin: "Italien",
+    style: "Lager",
+    abv: 4.6,
+    description: "Italienisches Traditionslager mit dem trinkenden Mann mit grünem Hut auf dem Etikett. Mild, leicht malzig.",
+    flavorProfile: ["Mild", "Malzig", "Spritzig", "Süffig"],
+    trivia: "Das Etikett zeigt einen Herrn, den der Brauereichef 1942 in Udine fotografierte – sein Lohn war ein Bier!",
+    priceCategory: "classic_bar",
+    priceEur: 1.35
+  },
+  {
+    name: "18/70 La Rubia",
+    brewery: "18/70 (Heineken España)",
+    origin: "Baskenland (Spanien)",
+    style: "Helles Bock",
+    abv: 6.2,
+    description: "Dunkle Flasche mit markanter weißer '18/70'-Aufschrift. Kräftiges blondes Lager mit 6,2% und vollem Malzkörper.",
+    flavorProfile: ["Malzig", "Hopfig-Herb", "Würzig", "Süffig"],
+    trivia: "Startete als Geheimtipp in baskischen Kneipen in Donostia / San Sebastián und wurde zum spanischen Kultbier.",
     priceCategory: "premium_craft",
     priceEur: 1.65
   },
   {
-    name: "Inedit Damm",
-    brewery: "Damm & Ferran Adrià",
-    origin: "Barcelona",
+    name: "Maternus Turbia (Aldi)",
+    brewery: "Maternus (Aldi España)",
+    origin: "Spanien / Deutschland",
     style: "Witbier / Weizen",
-    abv: 4.8,
-    description: "Kreiert von Starkoch Ferran Adrià mit Koriander, Orangenschalen und Süßholz.",
-    flavorProfile: ["Fruchtig", "Zitrusfrisch", "Spritzig", "Würzig"],
-    trivia: "Kreiert als Gourmetergänzung zu Spitzen-Tapas – unfiltriert und samtig im Mund.",
-    priceCategory: "premium_craft",
-    priceEur: 2.60
-  },
-  {
-    name: "Cruzcampo Especial",
-    brewery: "Heineken España",
-    origin: "Sevilla",
-    style: "Lager",
-    abv: 5.6,
-    description: "Extrem leicht, frisch und bitterarm mit dem markanten Gambrinus-Logo.",
-    flavorProfile: ["Mild", "Spritzig", "Süffig"],
-    trivia: "Das polarisierendste Bier Spaniens – in Andalusien vergöttert, im Tasting immer ein Streitfall.",
+    abv: 5.0,
+    description: "Braune Flasche mit weißem Längsetikett. Unfiltriertes, naturtrübes Zwickel-Bier mit vollmundiger Hefe.",
+    flavorProfile: ["Fruchtig", "Mild", "Malzig", "Spritzig"],
+    trivia: "'Turbia' steht auf Spanisch für trüb – ein unfiltriertes Kellerbier aus dem spanischen Aldi-Regal.",
     priceCategory: "mercadona_budget",
-    priceEur: 0.58
+    priceEur: 0.55
   },
   {
-    name: "Rosa Blanca Hoppy Lager",
+    name: "Voll-Damm Doble Malta",
     brewery: "Damm",
-    origin: "Mallorca",
-    style: "Lager",
-    abv: 3.4,
-    description: "Kaltgehopftes balearisches Sommerbier mit frischer Zitrusnote.",
-    flavorProfile: ["Zitrusfrisch", "Fruchtig", "Spritzig", "Mild"],
-    trivia: "Kult-Klassiker von 1927 – der ideale leichte Starter für lange Sommerabende.",
+    origin: "Barcelona (Spanien)",
+    style: "Doble Malta",
+    abv: 7.2,
+    description: "Große grüne Dose ganz rechts oben: 'Das Originale Märzenbier'. Doppeltes Malz, 7,2% vol, mächtig und intensiv.",
+    flavorProfile: ["Malzig", "Würzig", "Hopfig-Herb", "Karamell"],
+    trivia: "Gewinnt weltweit Goldmedaillen. Das 'Doble Malta' half im 19. Jahrhundert, die Sommerhitze zu überstehen.",
     priceCategory: "premium_craft",
-    priceEur: 1.55
+    priceEur: 1.65
+  },
+  {
+    name: "Amstel Oro Tostada",
+    brewery: "Amstel España",
+    origin: "Spanien / Valencia",
+    style: "Märzen / Amber",
+    abv: 6.2,
+    description: "Goldene Dose mit schwarzem Amstel-Kreis. 100% Röstmalz, dunkles Kupfergold und feine Karamellnoten.",
+    flavorProfile: ["Röstig", "Malzig", "Karamell", "Süffig"],
+    trivia: "Stand direkt unter der Voll-Damm-Dose! Sehr beliebt in den Bars rund um Valencia und Alicante.",
+    priceCategory: "classic_bar",
+    priceEur: 1.15
+  },
+  {
+    name: "Mahou Maestra Doble Lúpulo",
+    brewery: "Mahou San Miguel",
+    origin: "Madrid (Spanien)",
+    style: "Doble Malta",
+    abv: 7.5,
+    description: "Dunkelblaue Dose ganz unten: Meisterbier mit doppeltem Hopfen und satten 7,5% vol. Tief bernsteinfarben.",
+    flavorProfile: ["Malzig", "Hopfig-Herb", "Würzig", "Röstig"],
+    trivia: "Mit Rösthopfen gebraut – das stärkste Dosenbier auf eurer Küchenzeile!",
+    priceCategory: "premium_craft",
+    priceEur: 1.75
+  },
+  {
+    name: "Cerdo Volador Session IPA",
+    brewery: "Barcelona Beer Company",
+    origin: "Barcelona (Spanien)",
+    style: "IPA",
+    abv: 5.5,
+    description: "Auffällige pinke Dose mit fliegendem Schwein! Echtes spanisches Craft Session IPA mit tropischem Hopfen.",
+    flavorProfile: ["Fruchtig", "Zitrusfrisch", "Hopfig-Herb", "Spritzig"],
+    trivia: "'Wenn Schweine fliegen!' – Das berühmteste katalanische Craft-Bier mit Maracuja- und Mango-Aromen.",
+    priceCategory: "premium_craft",
+    priceEur: 2.20
+  },
+  {
+    name: "Steinburg Suave (Mercadona)",
+    brewery: "Font Salem / Mercadona",
+    origin: "Valencia (Spanien)",
+    style: "Lager",
+    abv: 4.0,
+    description: "Weiße Dose mit grünem Stern ganz rechts unten. Mit 4,0% extra leicht und soft gebraut.",
+    flavorProfile: ["Mild", "Spritzig", "Süffig"],
+    trivia: "Die sanfteste aller Mercadona-Dosen – perfekt für den sonnigen Nachmittag am Finca-Pool.",
+    priceCategory: "mercadona_budget",
+    priceEur: 0.36
   }
 ];
 
@@ -453,19 +549,14 @@ Liefere ein valides JSON-Array zurück:
       }
     }
 
-    const count = Math.min(Math.max(images.length * 2, 4), SPANISH_BEER_DEFAULTS.length);
-    const selectedBeers = [...SPANISH_BEER_DEFAULTS]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, count);
-
     return res.json({
-      beers: selectedBeers,
+      beers: SPANISH_BEER_DEFAULTS,
       source: 'smart_fallback'
     });
   } catch (error: any) {
     console.error('Error in recognize-beers endpoint:', error);
     return res.json({
-      beers: SPANISH_BEER_DEFAULTS.slice(0, 5),
+      beers: SPANISH_BEER_DEFAULTS,
       source: 'smart_fallback'
     });
   }
